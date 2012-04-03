@@ -1,64 +1,104 @@
 package Digest::PBKDF2;
 
 use strict;
-use warnings;
+
 use parent "Digest::base";
 use Crypt::PBKDF2 0.112020;
 
-BEGIN {
-	# VERSION
-}
+our $VERSION = '0.1.0';
 
-#ABSTRACT: This module is a subclass of Digest using the Crypt::PBKDF2 algorithm.
+# ABSTRACT: This module is a subclass of Digest using the Crypt::PBKDF2 algorithm.
 
 sub new {
-    my ( $class, %params ) = @_;
-    my $encoding = $params{encoding} || 'crypt';
-    return bless { _entries => [], _data => undef, encoding => $encoding }, $class;
+    my $class = shift;
+
+    return bless {
+        _data => '',
+    }, ref($class) || $class;
 }
+
+
+sub as_crypt {
+    my $self = shift;
+
+    return $self->_with_encoding('crypt');
+}
+
+
+sub as_ldap {
+    my $self = shift;
+
+    return $self->_with_encoding('ldap');
+}
+
+sub salt {
+    my ($self, $salt) = @_;
+
+    if ($salt) {        
+        $self->{salt} = $salt;
+        return $self;
+    }
+
+    return $self->{salt};
+}
+
 
 sub clone {
-    my $self  = shift;
-    my $clone = {
-        _data    => $self->{_data},
-        _entries => $self->{_entries},
-        encoding => $self->{encoding},
-    };
-    return bless $clone, ref $self;
+    my $self = shift;
+
+    return bless {
+        salt  => $self->salt,
+        _data => $self->{_data},
+    }, ref($self);
 }
 
-sub add {
-    my $self = shift;
-    if (@_) {
-        push @{ $self->{_entries} }, join '', @_;
-        $self->{_data} .= join '', @_;
-    }
-    $self;
-}
 
 sub reset {
     my $self = shift;
+
+    delete $self->{salt};
     delete $self->{_data};
-    delete $self->{_entries};
-    delete $self->{encoding};
-    $self;
+
+    return $self->new;
 }
+
+
+sub add {
+    my $self = shift;
+
+    $self->{_data} .= join('', @_);
+
+    return $self;
+}
+
 
 sub digest {
     my $self = shift;
-    my @string = split '', $self->{_data};
 
-    my $salt;
+    my $pbkdf2 = Crypt::PBKDF2->new;
 
-    $salt = join( '', splice( @string, 0, length( $self->{_entries}->[0] ) ) )
-        if @{ $self->{_entries} } > 1;
-    my $data = join( '', @string );
+    my $hash = $pbkdf2->PBKDF2($self->salt, $self->{_data});
 
-    my $crypt = Crypt::PBKDF2->new( encoding => $self->{encoding}, salt_len => length($salt||'') );
-    my $return = $crypt->generate( $data, $salt );
     $self->reset;
-    $return;
+
+    return $hash;
 }
+
+
+sub _with_encoding {
+    my ($self, $encoding) = @_;
+
+    my $crypt = Crypt::PBKDF2->new(
+        encoding => $encoding,
+    );
+
+    my $hash = $crypt->generate($self->{_data}, $self->salt);
+
+    $self->reset;
+
+    return $hash;
+}
+
 
 1;
 
