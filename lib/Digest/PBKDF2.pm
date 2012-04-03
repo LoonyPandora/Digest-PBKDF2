@@ -75,9 +75,7 @@ sub add {
 sub digest {
     my $self = shift;
 
-    my $pbkdf2 = Crypt::PBKDF2->new;
-
-    my $hash = $pbkdf2->PBKDF2($self->salt, $self->{_data});
+    my $hash = Crypt::PBKDF2->new()->PBKDF2($self->salt, $self->{_data});
 
     $self->reset;
 
@@ -107,26 +105,33 @@ __END__
 =head1 NAME
 
 Digest::PBKDF2
+
 A minimalist Digest module using the PBKDF2 algorithm.
-
-=head1 NOTICE
-
-You can only use one salt, a pre-salt, with this module. It is not smart enough
-to do post-salts.
 
 =head1 SYNOPSIS
 
-    my $digest = Digest::PBKDF2->new;   # Or...
-    my $digest = Digest::PBKDF2->new(encoding => 'ldap');
-    $digest->add('mysalt');             # salt = 'mysalt'
-    $digest->add('k3wLP@$$w0rd');       # password = 'k3wLP@$$w0rd'
+    # via the Digest module (recommended)
+    use Digest;
 
-    $digest->add('eX+ens10n');          # password = 'k3wLP@$$w0rdeX+ens10n'
+    my $pbkdf2 = Digest->new('PBKDF2');
 
-    my $result = $digest->digest;       # $PBKDF2$HMACSHA1:1000:bXlzYWx0$4P9pwp
-                                        # LoF+eq5jwUbMw05qRQyZs=
+    # $salt is essential, and should be cryptographically random
+    $pbkdf2->salt($salt);
 
-That's about it.
+    $pbkdf2->add('password');      # password = 'password'
+    $pbkdf2->add('extension');     # password = 'passwordextension'
+
+    $digest = $pbkdf2->digest;     # Binary version, 20 bytes
+    $digest = $pbkdf2->hexdigest;  # Hex-encoded, 42 bytes
+    $digest = $pbkdf2->b64digest;  # base64 encoded with no padding. 27 bytes
+
+    # [...]
+
+    # Using the module directly (same interface as above)
+
+    use Digest::PBKDF2;
+
+    my $pbkdf2 = Digest::PBKDF2->new();
 
 =head1 METHODS
 
@@ -134,28 +139,101 @@ That's about it.
 
 =item new
 
-Create a new Digest::PBKDF2 object. This defaults to using the "crypt" encoding
-available in Crypt::PBKDF2--please see L<Crypt::PBKDF2> for details.
+    my $pbkdf2 = Digest->new('PBKDF2');
+
+Creates a new C<Digest::PBKDF2> object.
+
+You can also use this module directly
+
+    my $pbkdf2 = Digest::PBKDF2->new();
 
 =item clone
 
-Copies the data and state from the original Digest::PBKDF2 object,
+    my $pbkdf2->clone;
+
+Copies the data and state from the original C<Digest::PBKDF2> object,
 and returns a new object.
 
 =item add
 
-Pass this method your salt and data chunks. They are stored up
-until you call digest.
+    $pbkdf2->add("a"); $pbkdf2->add("b"); $pbkdf2->add("c");
+    $pbkdf2->add("a")->add("b")->add("c");
+    $pbkdf2->add("a", "b", "c");
+    $pbkdf2->add("abc");
+
+Adds data to the message we are calculating the digest for.
+
+All the above examples have the same effect
+
+=item salt
+
+    $pbkdf2->salt($salt);
+
+Sets the value to be used as a salt. You must specify a salt.
+
+It is recommenced that you use a module like L<Data::Entropy::Algorithms> to
+provide a truly randomised salt.
+
+When called with no arguments, will return the whatever is the current salt
 
 =item digest
 
-This encrypts your data and returns the encrypted string.
+    $pbkdf2->digest;
+
+Return the binary digest for the message.
+
+The returned string will be 20 bytes long.
+
+=item hexdigest
+
+    $pbkdf2->hexdigest;
+
+Same as L</"digest">, but will return the digest in hexadecimal form.
+
+The C<length> of the returned string will be 42 and will only contain
+characters from the ranges C<'0'..'9'> and C<'a'..'f'>.
+
+=item b64digest
+
+    $pbkdf2->b64digest;
+
+Same as L</"digest">, but will return the digest base64 encoded.
+
+The C<length> of the returned string will be 27 and will only contain characters 
+from the ranges C<'0'..'9'>, C<'A'..'Z'>, C<'a'..'z'>, C<'+'>, and C<'.'>
+
+The base64 encoded string returned is not padded to be a multiple of 4 bytes long.
 
 =item reset
 
-After calling digest, the module calls reset on its self,
-clearing data and the record of how many additions were made to the data
-to be digested.
+    $pbkdf2->reset;
+
+Resets the object to the same internal state it was in when it was constructed.
+
+=item as_crypt
+
+    $pbkdf2->as_crypt;
+    
+Returns the digest, salt, and algorithm as a string that is similar to that used
+by the C<crypt()> function. Example:
+
+    $PBKDF2$HMACSHA1:1000:4q9OTg==$9Pb6bCRgnct/dga+4v4Lyv8x31s=
+
+The output of this method is the same as the outpout from the 
+C<generate> function of L<Crypt::PBKDF2> when using the C<crypt> encoding method
+
+
+=item as_ldap
+
+    $pbkdf2->as_ldap;
+
+Returns the digest, salt, and algorithm as a string that is intended to be
+compatible with RFC 2307. Example:
+
+    {X-PBKDF2}HMACSHA1:AAAD6A:8ODUPA==:1HSdSVVwlWSZhbPGO7GIZ4iUbrk=
+
+The output of this method is the same as the outpout from the 
+C<generate> function of L<Crypt::PBKDF2> when using the C<crypt> encoding method
 
 =back
 
@@ -167,6 +245,7 @@ L<Digest>
 =head1 AUTHOR
 
 Amiri Barksdale, E<lt>abarksdale@campusexplorer.comE<gt>
+James Aitken, E<lt>jaitken@cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
