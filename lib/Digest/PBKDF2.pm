@@ -1,6 +1,6 @@
 package Digest::PBKDF2;
 
-# ABSTRACT: This module is a subclass of Digest using the Crypt::PBKDF2 algorithm.
+# ABSTRACT: A minimalist Digest module using the PBKDF2 algorithm.
 
 use strict;
 
@@ -54,9 +54,9 @@ sub clone {
     my $self = shift;
 
     return bless {
-        salt     => $self->salt,
-        encoding => $self->{_encoding},
-        _data    => $self->{_data},
+        salt      => $self->salt,
+        _encoding => $self->{_encoding},
+        _data     => $self->{_data},
     }, ref($self);
 }
 
@@ -145,7 +145,7 @@ A minimalist Digest module using the PBKDF2 algorithm.
     $pbkdf2->add('extension');     # password = 'passwordextension'
 
     $digest = $pbkdf2->digest;     # Binary version, 20 bytes
-    $digest = $pbkdf2->hexdigest;  # Hex-encoded, 42 bytes
+    $digest = $pbkdf2->hexdigest;  # Hex-encoded, 40 bytes
     $digest = $pbkdf2->b64digest;  # base64 encoded with no padding. 27 bytes
 
     # [...]
@@ -213,7 +213,7 @@ The returned string will be 20 bytes long.
 
 Same as L</"digest">, but will return the digest in hexadecimal form.
 
-The C<length> of the returned string will be 42 and will only contain
+The C<length> of the returned string will be 40 and will only contain
 characters from the ranges C<'0'..'9'> and C<'a'..'f'>.
 
 =item b64digest
@@ -244,7 +244,6 @@ by the C<crypt()> function. Example:
 
 The output of this method is the same as the outpout from the 
 C<generate> function of L<Crypt::PBKDF2> when using the C<crypt> encoding method
-
 
 =item as_ldap
 
