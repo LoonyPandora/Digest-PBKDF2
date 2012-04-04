@@ -22,14 +22,18 @@ sub new {
 sub as_crypt {
     my $self = shift;
 
-    return $self->_with_encoding('crypt');
+    $self->{_encoding} = 'crypt';
+
+    return $self->_digest_with_encoding;
 }
 
 
 sub as_ldap {
     my $self = shift;
 
-    return $self->_with_encoding('ldap');
+    $self->{_encoding} = 'ldap';
+
+    return $self->_digest_with_encoding;
 }
 
 sub salt {
@@ -50,8 +54,9 @@ sub clone {
     my $self = shift;
 
     return bless {
-        salt  => $self->salt,
-        _data => $self->{_data},
+        salt     => $self->salt,
+        encoding => $self->{_encoding},
+        _data    => $self->{_data},
     }, ref($self);
 }
 
@@ -60,6 +65,7 @@ sub reset {
     my $self = shift;
 
     delete $self->{salt};
+    delete $self->{_encoding};
     delete $self->{_data};
 
     return $self->new;
@@ -78,31 +84,41 @@ sub add {
 sub digest {
     my $self = shift;
 
+    my $hash = $self->_crypt->PBKDF2($self->salt, $self->{_data});
+
+    $self->reset;
+
+    return $hash;
+}
+
+
+# Returns the digest, salt, and algorithm as a crypt or ldap string
+sub _digest_with_encoding {
+    my $self = shift;
+
+    my $hash = $self->_crypt->generate($self->{_data}, $self->salt);
+
+    $self->reset;
+
+    return $hash;
+}
+
+
+# Returns a Crypt::PBKDF2 object, with the encoding set as required
+sub _crypt {
+    my $self = shift;
+
     if (!defined $self->salt) {
         croak "Salt must be specified. If you want no salt, you must explicitly set it to the empty string";
     }
 
-    my $hash = Crypt::PBKDF2->new()->PBKDF2($self->salt, $self->{_data});
-
-    $self->reset;
-
-    return $hash;
+    if ($self->{_encoding}) {
+        return Crypt::PBKDF2->new(encoding => $self->{_encoding});
+    }
+    
+    return Crypt::PBKDF2->new;
 }
 
-
-sub _with_encoding {
-    my ($self, $encoding) = @_;
-
-    my $crypt = Crypt::PBKDF2->new(
-        encoding => $encoding,
-    );
-
-    my $hash = $crypt->generate($self->{_data}, $self->salt);
-
-    $self->reset;
-
-    return $hash;
-}
 
 
 1;
