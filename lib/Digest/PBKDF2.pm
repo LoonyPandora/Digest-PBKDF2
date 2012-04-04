@@ -1,13 +1,14 @@
 package Digest::PBKDF2;
 
+# ABSTRACT: This module is a subclass of Digest using the Crypt::PBKDF2 algorithm.
+
 use strict;
 
 use parent "Digest::base";
+use Carp qw(croak);
 use Crypt::PBKDF2 0.112020;
 
-our $VERSION = '0.1.0';
-
-# ABSTRACT: This module is a subclass of Digest using the Crypt::PBKDF2 algorithm.
+# VERSION
 
 sub new {
     my $class = shift;
@@ -34,7 +35,9 @@ sub as_ldap {
 sub salt {
     my ($self, $salt) = @_;
 
-    if ($salt) {        
+    # Salt set to the empty string is valid, though strongly discouraged.
+    # It is only accepted for backwards compatibility.
+    if (defined $salt) {
         $self->{salt} = $salt;
         return $self;
     }
@@ -74,6 +77,10 @@ sub add {
 
 sub digest {
     my $self = shift;
+
+    if (!defined $self->salt) {
+        croak "Salt must be specified. If you want no salt, you must explicitly set it to the empty string";
+    }
 
     my $hash = Crypt::PBKDF2->new()->PBKDF2($self->salt, $self->{_data});
 
@@ -245,6 +252,7 @@ L<Digest>
 =head1 AUTHOR
 
 Amiri Barksdale, E<lt>abarksdale@campusexplorer.comE<gt>
+
 James Aitken, E<lt>jaitken@cpan.orgE<gt>
 
 =head1 COPYRIGHT
