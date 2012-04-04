@@ -1,0 +1,55 @@
+1.0.0   2012-04-04
+
+    [ DOCUMENTATION ]
+    * Added example usage to all methods
+        (James Aitken)
+
+    [ FEATURE ]
+    * The digest method now matches other Digest:: namespace modules,
+      and only returns the digest.
+      
+      This means specifing the encoding when creating a new Digest::PBKDF2
+      object is no longer necessary or supported.
+      
+      To access the different encodings, one should use the new as_ldap
+      and as_crypt methods
+      
+      This is a backwards incompatible change.
+        (James Aitken)
+
+    * Added as_ldap and as_crypt methods to mitigate the changing of the
+      digest method to only return the digest
+        (James Aitken)
+          
+    * Added salt method to specify the salt directly, rather than parsing
+      it from the data that was added, simplifying the interface. You must
+      explicitly set the empty string to create a salt-less hash.
+      
+      The salt method acts as a getter to read the salt as currently set
+        (James Aitken)
+
+    [ BUGFIX ]
+    * hexdigest and b64digest now correctly return the encoded version of the digest
+        (James Aitken)
+
+    [ TESTS ]
+    * Updated tests and split into multiple test files for readability
+        (James Aitken)
+
+
+0.009   2011-08-05
+
+0.008   2011-08-03
+
+0.007   2011-08-03
+
+0.006   2011-07-25
+
+0.005   2011-02-18
+
+0.004   2011-02-18
+
+0.003   2011-02-15
+
+0.001   2011-02-11
+
