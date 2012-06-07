@@ -14,7 +14,8 @@ sub new {
     my $class = shift;
 
     return bless {
-        _data => '',
+        _data    => '',
+        _options => {},
     }, ref($class) || $class;
 }
 
@@ -22,7 +23,7 @@ sub new {
 sub as_crypt {
     my $self = shift;
 
-    $self->{_encoding} = 'crypt';
+    $self->{_options }->{encoding} = 'crypt';
 
     return $self->_digest_with_encoding;
 }
@@ -31,10 +32,26 @@ sub as_crypt {
 sub as_ldap {
     my $self = shift;
 
-    $self->{_encoding} = 'ldap';
+    $self->{_options }->{encoding} = 'ldap';
 
     return $self->_digest_with_encoding;
 }
+
+
+sub iterations {
+    my ($self, $iterations) = @_;
+
+    # Though PBKDF2 does not enforce a min / max iteration count,
+    # the recommended minimum is 1000, and 99,999,999 is a practical max
+    # 99,999,999 takes ~15 minutes to generate a single hash on modern hardware
+    if (defined $iterations && $iterations =~ /^\d{4,8}$/) {
+        $self->{_options }->{iterations} = $iterations;
+        return $self;
+    }
+
+    return $self->{_options }->{iterations};
+}
+
 
 sub salt {
     my ($self, $salt) = @_;
@@ -55,7 +72,7 @@ sub clone {
 
     return bless {
         salt      => $self->salt,
-        _encoding => $self->{_encoding},
+        _options  => $self->{_options},
         _data     => $self->{_data},
     }, ref($self);
 }
@@ -65,7 +82,7 @@ sub reset {
     my $self = shift;
 
     delete $self->{salt};
-    delete $self->{_encoding};
+    delete $self->{_options};
     delete $self->{_data};
 
     return $self->new;
@@ -109,14 +126,14 @@ sub _crypt {
     my $self = shift;
 
     if (!defined $self->salt) {
-        croak "Salt must be specified. If you want no salt, you must explicitly set it to the empty string";
+        croak "No salt specified. The empty string must be set to use a blank salt";
     }
 
-    if ($self->{_encoding}) {
-        return Crypt::PBKDF2->new(encoding => $self->{_encoding});
+    if (!defined $self->iterations) {
+        croak "Invalid iteration count. An Iteration count in the range 1,000 - 99,999,999 is required";
     }
-    
-    return Crypt::PBKDF2->new;
+
+    return Crypt::PBKDF2->new(%{$self->{_options}});
 }
 
 
