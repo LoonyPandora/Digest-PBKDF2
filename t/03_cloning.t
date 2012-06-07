@@ -1,4 +1,4 @@
-use Test::More tests => 12;
+use Test::More tests => 13;
 
 use strict;
 use warnings;
@@ -13,6 +13,7 @@ my $orig = Digest::PBKDF2->new;
 lives_ok( sub { $orig->add('cool')  }, "I can add one chunk" );
 lives_ok( sub { $orig->add('jazz')  }, "I can add another chunk" );
 lives_ok( sub { $orig->salt('salt') }, "I can add salt" );
+lives_ok( sub { $orig->iterations(1000) }, "I can add an iteration count" );
 
 my $clone;
 
